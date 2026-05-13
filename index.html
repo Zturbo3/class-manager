@@ -668,11 +668,11 @@
       <p>导入名单，记录奖惩、成绩等日常表现，自动记录时间</p>
       <span class="info-select-arrow">→</span>
     </div>
-    <div class="info-select-card-full" onclick="navigateToAi('student-info')">
+    <div class="info-select-card-full">
       <div class="card-icon-wrap"><span class="card-icon">🔍</span></div>
       <h2>学生信息智能查询</h2>
       <p>AI 智能查询学生档案、家庭背景等全方位信息</p>
-      <button class="info-select-use-btn">立即使用 AI 助手 →</button>
+      <button class="info-select-use-btn" onclick="navigateToAi('student-info')">立即使用 AI 助手 →</button>
     </div>
   </div>
 </div>
@@ -883,6 +883,9 @@ function navigateBack() {
 function navigateToAi(type) {
   if (AI_URLS[type]) {
     window.open(AI_URLS[type], '_blank');
+  } else if (type === 'student-info') {
+    // 学生信息智能查询：跳转到 AI 助手页面
+    window.open('http://171.111.194.87:9015/chat/o0KxUg59fxQZ5M42', '_blank');
   }
 }
 
