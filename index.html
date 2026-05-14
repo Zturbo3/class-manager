@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>班主任班级管理助手</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --glass-bg: rgba(255,255,255,0.10);
+      --glass-border: rgba(255,255,255,0.20);
+      --glass-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    }
+
+    body {
+      font-family: 'Noto Sans SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
+      background: linear-gradient(135deg, #1a1f3e 0%, #16213e 40%, #1e1545 70%, #0f2d4a 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ===== 背景装饰 ===== */
+    #bg-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+      animation: orbFloat 12s ease-in-out infinite alternate;
+    }
+    .bg-orb-1 { width: 560px; height: 560px; background: radial-gradient(circle, #6366f1, #3b5bff); top: -120px; left: -120px; animation-duration: 14s; }
+    .bg-orb-2 { width: 420px; height: 420px; background: radial-gradient(circle, #c026d3, #7c3aed); top: 30%; right: -100px; animation-duration: 10s; animation-delay: -4s; }
+    .bg-orb-3 { width: 380px; height: 380px; background: radial-gradient(circle, #0891b2, #06b6d4); bottom: -100px; left: 30%; animation-duration: 16s; animation-delay: -7s; }
+
+    @keyframes orbFloat {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(30px, -20px) scale(1.08); }
+      100% { transform: translate(-20px, 30px) scale(0.95); }
+    }
+
+    /* ===== 页面容器 ===== */
+    .page { display: none !important; min-height: 100vh; position: relative; z-index: 1; }
+    .page.active { display: flex !important; flex-direction: column; }
+    
+    /* 主页特殊布局 */
+    #home.active { align-items: center; justify-content: flex-start; }
+
+    /* ===== 主页 ===== */
+    #home {
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0 0 60px;
+      min-height: 100vh;
+    }
+
+    /* 顶部导航栏 */
+    .home-nav {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .nav-logo { display: flex; align-items: center; gap: 12px; }
+    .nav-logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px rgba(79,172,254,0.4);
+    }
+    .nav-logo-text { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.9); letter-spacing: 1px; }
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+    .nav-datetime { text-align: right; }
+    .nav-time { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: 2px; line-height: 1; }
+    .nav-date { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 3px; letter-spacing: 0.5px; }
+    .nav-badge {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: #0a0f1e; font-size: 0.72rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px; letter-spacing: 1px;
+    }
+
+    /* Hero 区 */
+    .home-hero {
+      width: 100%; max-width: 1200px; margin: 0 auto;
+      padding: 56px 40px 48px; position: relative;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(79,172,254,0.12); border: 1px solid rgba(79,172,254,0.3);
+      color: #4facfe; font-size: 0.78rem; font-weight: 600;
+      padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; margin-bottom: 20px;
+    }
+    .hero-tag::before { content: '●'; font-size: 8px; animation: blink 1.4s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .hero-title {
+      font-size: 3rem; font-weight: 700; line-height: 1.2; margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #a5c8ff 60%, #c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; letter-spacing: 2px;
+    }
+    .hero-sub { font-size: 1rem; color: rgba(255,255,255,0.62); letter-spacing: 1px; font-weight: 300; }
+
+    /* 分隔线 */
+    .section-divider {
+      width: 100%; max-width: 1200px; margin: 0 auto 32px;
+      padding: 0 40px; display: flex; align-items: center; gap: 16px;
+    }
+    .divider-label { font-size: 0.75rem; color: rgba(255,255,255,0.35); letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
+    .divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.12), transparent); }
+
+    /* 卡片网格 */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+      max-width: 1200px; width: 100%; margin: 0 auto; padding: 0 40px;
+    }
+
+    /* 毛玻璃卡片 */
+    .card {
+      background: var(--glass-bg); backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+      border-radius: 20px; padding: 32px 28px; cursor: pointer;
+      box-shadow: var(--glass-shadow);
+      transition: transform 0.28s cubic-bezier(.34,1.56,.64,1), box-shadow 0.28s ease, border-color 0.28s ease, background 0.28s ease;
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px; border-radius: 20px 20px 0 0; opacity: 0.9;
+    }
+    .card::after {
+      content: ''; position: absolute; bottom: -40px; right: -40px;
+      width: 120px; height: 120px; border-radius: 50%; opacity: 0.06;
+      transition: opacity 0.28s, transform 0.28s;
+    }
+    .card:hover {
+      transform: translateY(-6px) scale(1.02);
+      border-color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.16);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    .card:hover::after { opacity: 0.22; transform: scale(1.3); }
+
+    .card-1::before { background: linear-gradient(90deg, #ff6b6b, #ffa94d); }
+    .card-1::after  { background: #ff6b6b; }
+    .card-2::before { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+    .card-2::after  { background: #43e97b; }
+    .card-3::before { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+    .card-3::after  { background: #4facfe; }
+    .card-4::before { background: linear-gradient(90deg, #a78bfa, #f472b6); }
+    .card-4::after  { background: #a78bfa; }
+    .card-5::before { background: linear-gradient(90deg, #fda085, #f6d365); }
+    .card-5::after  { background: #fda085; }
+    .card-6::before { background: linear-gradient(90deg, #43e8d8, #4facfe); }
+    .card-6::after  { background: #43e8d8; }
+
+    .card-icon-wrap {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; margin-bottom: 18px; position: relative; z-index: 1;
+    }
+    .card-1 .card-icon-wrap { background: rgba(255,107,107,0.18); box-shadow: 0 4px 16px rgba(255,107,107,0.25); }
+    .card-2 .card-icon-wrap { background: rgba(67,233,123,0.18); box-shadow: 0 4px 16px rgba(67,233,123,0.25); }
+    .card-3 .card-icon-wrap { background: rgba(79,172,254,0.18); box-shadow: 0 4px 16px rgba(79,172,254,0.25); }
+    .card-4 .card-icon-wrap { background: rgba(167,139,250,0.18); box-shadow: 0 4px 16px rgba(167,139,250,0.25); }
+    .card-5 .card-icon-wrap { background: rgba(253,160,133,0.18); box-shadow: 0 4px 16px rgba(253,160,133,0.25); }
+    .card-6 .card-icon-wrap { background: rgba(67,232,216,0.18); box-shadow: 0 4px 16px rgba(67,232,216,0.25); }
+    .card-icon { font-size: 26px; }
+    .card h2 { font-size: 1.05rem; font-weight: 700; color: rgba(255,255,255,0.96); margin-bottom: 10px; letter-spacing: 0.5px; position: relative; z-index: 1; }
+    .card p { font-size: 0.82rem; color: rgba(255,255,255,0.55); line-height: 1.7; font-weight: 300; position: relative; z-index: 1; }
+    .card-arrow {
+      margin-top: 20px; display: flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; color: rgba(255,255,255,0.40); font-weight: 500;
+      transition: color 0.2s, gap 0.2s; position: relative; z-index: 1;
+    }
+    .card:hover .card-arrow { color: rgba(255,255,255,0.80); gap: 10px; }
+    .home-footer { width: 100%; text-align: center; padding: 28px 0 0; color: rgba(255,255,255,0.25); font-size: 0.72rem; letter-spacing: 1px; }
+
+    /* ===== 通用子页头部 ===== */
+    .sub-header {
+      background: rgba(255,255,255,0.12); backdrop-filter: blur(10px);
+      padding: 16px 28px; display: flex; align-items: center; gap: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-back {
+      background: rgba(255,255,255,0.9); color: #1565c0; border: none;
+      border-radius: 10px; padding: 8px 20px; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: background 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn-back:hover { background: #fff; transform: translateX(-3px); }
+    .sub-header-title { color: #fff; font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+    .sync-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.3px; transition: all 0.3s ease;
+    }
+    .sync-badge.idle    { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+    .sync-badge.syncing { background: rgba(255,193,7,0.2); color: #ffc107; animation: pulse 1s infinite; }
+    .sync-badge.ok      { background: rgba(76,175,80,0.2); color: #81c784; }
+    .sync-badge.error   { background: rgba(244,67,54,0.2); color: #ef9a9a; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* 子页头部操作区 */
+    .sub-header-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .btn-refresh {
+      background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-refresh:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+
+    /* ===== 待办事项页 ===== */
+    #todo { background: linear-gradient(135deg, #1a237e 0%, #1565c0 40%, #0288d1 100%); }
+    .todo-body {
+      flex: 1; padding: 28px 24px; max-width: 760px; width: 100%;
+      margin: 0 auto;
+    }
+    .todo-input-card {
+      background: #fff; border-radius: 16px; padding: 24px;
+      margin-bottom: 24px; box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+    }
+    .todo-input-card h3 { font-size: 1rem; color: #555; margin-bottom: 14px; font-weight: 600; }
+    .input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .todo-input-card input[type="text"], .todo-input-card textarea, .todo-input-card select {
+      border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 10px 14px;
+      font-size: 0.92rem; font-family: inherit; outline: none;
+      transition: border-color 0.2s; resize: none;
+    }
+    .todo-input-card input[type="text"]:focus, .todo-input-card textarea:focus, .todo-input-card select:focus { border-color: #1565c0; }
+    #todo-title { flex: 1; min-width: 180px; }
+    #todo-priority { width: 110px; }
+    #todo-note { width: 100%; height: 70px; }
+    .btn-add-todo {
+      background: linear-gradient(135deg, #1565c0, #0288d1); color: #fff; border: none;
+      border-radius: 10px; padding: 10px 28px; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-add-todo:hover { opacity: 0.88; transform: scale(1.04); }
+    .todo-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+    .todo-stats { color: rgba(255,255,255,0.9); font-size: 0.88rem; font-weight: 600; }
+    .toolbar-btns { display: flex; gap: 8px; }
+    .btn-sm {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.4); border-radius: 8px;
+      padding: 6px 14px; font-size: 0.82rem; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.28); }
+    .btn-sm.danger { background: rgba(255,80,80,0.2); border-color: rgba(255,80,80,0.5); }
+    .btn-sm.danger:hover { background: rgba(255,80,80,0.4); }
+    .todo-list { display: flex; flex-direction: column; gap: 12px; }
+    .todo-item {
+      background: #fff; border-radius: 14px; padding: 16px 18px;
+      display: flex; align-items: flex-start; gap: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1); transition: opacity 0.2s, transform 0.15s; position: relative;
+    }
+    .todo-item.done { opacity: 0.55; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: #aaa; }
+    .todo-check {
+      width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid #ccc;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center;
+      justify-content: center; transition: all 0.2s; margin-top: 2px;
+    }
+    .todo-check.checked { background: #4caf50; border-color: #4caf50; }
+    .todo-check.checked::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; }
+    .todo-content { flex: 1; }
+    .todo-text { font-size: 0.97rem; font-weight: 600; color: #333; margin-bottom: 4px; }
+    .todo-note-text { font-size: 0.82rem; color: #888; line-height: 1.5; }
+    .priority-badge { font-size: 0.72rem; padding: 2px 10px; border-radius: 20px; font-weight: 700; margin-left: 8px; }
+    .priority-urgent { background: #ffe0e0; color: #c62828; }
+    .priority-normal { background: #e3f2fd; color: #1565c0; }
+    .priority-relax  { background: #e8f5e9; color: #2e7d32; }
+    .todo-time { font-size: 0.75rem; color: #bbb; margin-top: 4px; }
+    .btn-del {
+      background: none; border: none; color: #e0e0e0; font-size: 18px;
+      cursor: pointer; padding: 2px 6px; border-radius: 6px;
+      transition: color 0.2s, background 0.2s; flex-shrink: 0;
+    }
+    .btn-del:hover { color: #f44336; background: #ffeaea; }
+    .empty-hint { text-align: center; color: rgba(255,255,255,0.6); padding: 40px 0; font-size: 0.95rem; }
+
+    /* ===== 学生信息二级选择页 ===== */
+    #info-select { background: linear-gradient(135deg, #1a3a5c 0%, #1565c0 100%); }
+    .info-select-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+      max-width: 720px; width: 100%; margin: 28px auto; padding: 0 24px;
+    }
+    .info-select-card {
+      background: #fff; border-radius: 20px; padding: 36px 28px 32px;
+      text-align: center; cursor: pointer;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+      transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+      position: relative; overflow: hidden; border: 2px solid transparent;
+    }
+    .info-select-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 4px; border-radius: 20px 20px 0 0;
+    }
+    .info-select-card:first-child::before { background: linear-gradient(90deg, #ff9800, #e65100); }
+    .info-select-card:last-child::before { background: linear-gradient(90deg, #4caf50, #2e7d32); }
+    .info-select-card:hover { transform: translateY(-6px); box-shadow: 0 14px 40px rgba(0,0,0,0.18); border-color: #1976d2; }
+    .info-select-icon { font-size: 48px; display: block; margin-bottom: 16px; }
+    .info-select-card h3 { font-size: 1.1rem; font-weight: 700; color: #1a3a5c; margin-bottom: 10px; }
+    .info-select-card p { font-size: 0.85rem; color: #666; line-height: 1.6; }
+    .info-select-arrow {
+      display: inline-block; margin-top: 18px; font-size: 1.3rem; color: #1976d2;
+      opacity: 0; transform: translateX(-8px); transition: opacity 0.2s, transform 0.2s;
+    }
+    .info-select-card:hover .info-select-arrow { opacity: 1; transform: translateX(4px); }
+    .info-select-card-full {
+      background: linear-gradient(135deg, #43a047, #2e7d32); border-radius: 18px;
+      padding: 28px 24px 22px; color: #fff;
+      box-shadow: 0 8px 32px rgba(46,125,50,0.25);
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.28s;
+      cursor: pointer; min-height: 200px; justify-content: center;
+    }
+    .info-select-card-full:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 16px 48px rgba(46,125,50,0.4); }
+    .info-select-card-full .card-icon-wrap { background: rgba(255,255,255,0.18); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .info-select-card-full .card-icon { font-size: 28px; }
+    .info-select-card-full h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: #fff; }
+    .info-select-card-full p { font-size: 0.85rem; line-height: 1.5; opacity: 0.92; margin: 0 0 18px 0; color: #e8f5e9; }
+    .info-select-use-btn {
+      background: rgba(255,255,255,0.25); color: #fff; border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 24px; padding: 8px 22px; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: background 0.22s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s; letter-spacing: 1px;
+    }
+    .info-select-use-btn:hover { background: rgba(255,255,255,0.45); transform: scale(1.1); box-shadow: 0 4px 20px rgba(0,0,0,0.22); }
+    .info-select-use-btn:active { transform: scale(0.94); }
+    .perf-subtitle { text-align: center; color: rgba(255,255,255,0.8); font-size: 1rem; font-weight: 600; margin: 28px 0 0; letter-spacing: 1px; }
+
+    /* ===== 学生日常表现记录页 ===== */
+    #performance { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 40%, #43a047 100%); }
+    .perf-body {
+      flex: 1; padding: 28px 24px 40px; max-width: 1100px; width: 100%;
+      margin: 0 auto; display: flex; flex-direction: column; gap: 24px;
+    }
+    .perf-import-area {
+      background: rgba(255,255,255,0.13); backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(255,255,255,0.22); border-radius: 16px;
+      padding: 20px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .perf-import-area label { color: rgba(255,255,255,0.85); font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
+    .perf-import-btn {
+      background: linear-gradient(135deg, #fff, #e8f5e9); color: #1b5e20; border: none;
+      border-radius: 10px; padding: 10px 22px; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.15s; font-family: inherit;
+    }
+    .perf-import-btn:hover { opacity: 0.88; transform: scale(1.04); }
+    .perf-names-preview { color: rgba(255,255,255,0.75); font-size: 0.82rem; margin-left: auto; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .perf-names-preview span { color: #a5d6a7; font-weight: 700; }
+    .perf-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; flex: 1; min-height: 0; }
+    @media (max-width: 768px) { .perf-layout { grid-template-columns: 1fr; } }
+    .perf-left {
+      background: rgba(255,255,255,0.10); backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(255,255,255,0.18); border-radius: 16px;
+      padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;
+      max-height: 520px; overflow-y: auto;
+    }
+    .perf-left-title { color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .perf-student-item {
+      background: rgba(255,255,255,0.08); border: 1.5px solid transparent;
+      border-radius: 10px; padding: 10px 14px; color: rgba(255,255,255,0.82);
+      font-size: 0.88rem; font-weight: 500; cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .perf-student-item:hover { background: rgba(255,255,255,0.16); color: #fff; }
+    .perf-student-item.active { background: rgba(255,255,255,0.22); border-color: rgba(165,213,167,0.6); color: #fff; font-weight: 700; }
+    .perf-student-idx { background: rgba(255,255,255,0.12); border-radius: 6px; padding: 1px 7px; font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.55); flex-shrink: 0; }
+    .perf-student-item.active .perf-student-idx { background: rgba(165,213,167,0.35); color: #a5d6a7; }
+    .perf-left-empty { color: rgba(255,255,255,0.45); font-size: 0.82rem; text-align: center; padding: 24px 0; line-height: 1.8; }
+    .perf-right { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+    .perf-form-card { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; box-shadow: 0 6px 24px rgba(0,0,0,0.13); }
+    .perf-form-card h3 { font-size: 1rem; color: #1b5e20; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .perf-form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .perf-form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 120px; }
+    .perf-form-group label { font-size: 0.78rem; font-weight: 600; color: #666; }
+    .perf-form-group input, .perf-form-group select, .perf-form-group textarea {
+      border: 1.5px solid #d0d0d0; border-radius: 10px; padding: 9px 12px;
+      font-size: 0.88rem; font-family: inherit; outline: none;
+      transition: border-color 0.2s; resize: none;
+    }
+    .perf-form-group input:focus, .perf-form-group select:focus, .perf-form-group textarea:focus { border-color: #43a047; }
+    .perf-form-group textarea { height: 60px; }
+    .perf-btn-add {
+      background: linear-gradient(135deg, #43a047, #2e7d32); color: #fff; border: none;
+      border-radius: 10px; padding: 10px 28px; font-size: 0.92rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s, transform 0.15s; font-family: inherit; margin-top: 4px;
+    }
+    .perf-btn-add:hover { opacity: 0.88; transform: scale(1.04); }
+    .perf-records-card { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; box-shadow: 0 6px 24px rgba(0,0,0,0.13); flex: 1; overflow-y: auto; max-height: 400px; }
+    .perf-records-card h3 { font-size: 1rem; color: #1b5e20; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .perf-record-item {
+      background: #f9fbe7; border-left: 4px solid #aed581; border-radius: 0 10px 10px 0;
+      padding: 12px 16px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px; transition: background 0.15s;
+    }
+    .perf-record-item:hover { background: #f0f4c3; }
+    .perf-record-item.record-punish { background: #ffebee; border-left-color: #ef5350; }
+    .perf-record-item.record-punish:hover { background: #ffcdd2; }
+    .perf-record-item.record-grade { background: #e3f2fd; border-left-color: #42a5f5; }
+    .perf-record-item.record-grade:hover { background: #bbdefb; }
+    .perf-record-item.record-other { background: #f3e5f5; border-left-color: #ab47bc; }
+    .perf-record-item.record-other:hover { background: #e1bee7; }
+    .perf-record-date { font-size: 0.75rem; color: #999; white-space: nowrap; min-width: 90px; padding-top: 2px; }
+    .perf-record-content { flex: 1; font-size: 0.88rem; color: #333; line-height: 1.6; }
+    .perf-record-type { font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+    .perf-record-type.type-reward { background: #e8f5e9; color: #2e7d32; }
+    .perf-record-type.type-punish { background: #ffebee; color: #c62828; }
+    .perf-record-type.type-grade  { background: #e3f2fd; color: #1565c0; }
+    .perf-record-type.type-other  { background: #f3e5f5; color: #7b1fa2; }
+    .perf-record-del { background: none; border: none; color: #ccc; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: color 0.15s, background 0.15s; flex-shrink: 0; }
+    .perf-record-del:hover { color: #f44336; background: #ffeaea; }
+    .perf-records-empty { text-align: center; color: #aaa; padding: 32px 0; font-size: 0.88rem; line-height: 1.8; }
+    .perf-no-student {
+      background: rgba(255,255,255,0.95); border-radius: 16px; padding: 48px 24px;
+      text-align: center; color: #999; font-size: 0.92rem; line-height: 2;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.10); flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    }
+    .perf-no-student .big-icon { font-size: 48px; }
+
+    /* ===== 座位安排页 ===== */
+    #seat { background: linear-gradient(135deg, #004d40 0%, #00695c 50%, #00897b 100%); }
+    .seat-body { flex: 1; padding: 24px 20px 32px; display: flex; flex-direction: column; align-items: center; }
+    .podium { background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.45); border-radius: 12px; color: #fff; font-size: 0.95rem; font-weight: 700; letter-spacing: 3px; padding: 10px 60px; text-align: center; }
+    .podium-bottom { margin-top: 10px; margin-bottom: 4px; }
+    .seat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; width: 100%; max-width: 780px; margin-bottom: 28px; }
+    .seat-cell {
+      background: rgba(255,255,255,0.92); border-radius: 10px; border: 2px solid rgba(0,0,0,0.08);
+      min-height: 64px; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; position: relative; box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .seat-cell:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.2); border-color: #00897b; }
+    .seat-num { font-size: 0.68rem; color: #aaa; position: absolute; top: 5px; left: 8px; font-weight: 600; }
+    .seat-name {
+      width: 100%; text-align: center; border: none; background: transparent;
+      font-size: 0.88rem; font-weight: 600; color: #333; outline: none;
+      padding: 4px 6px; font-family: inherit; cursor: text;
+    }
+    .seat-name:focus { background: #e0f2f1; border-radius: 6px; color: #004d40; }
+    .seat-name::placeholder { color: #ccc; font-weight: 400; font-size: 0.78rem; }
+    .seat-cell.occupied { border-color: #00897b; background: rgba(232,245,233,0.95); }
+    .seat-cell.occupied .seat-name { color: #1b5e20; }
+    .seat-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 780px; margin-bottom: 16px; }
+    .seat-btn {
+      flex: 1; min-width: 180px; max-width: 260px; border: none; border-radius: 14px;
+      padding: 16px 24px; font-size: 0.97rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18); font-family: inherit;
+    }
+    .seat-btn:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+    .seat-btn:active { transform: scale(0.97); }
+    .btn-upload { background: linear-gradient(135deg, #fff, #e0f7fa); color: #006064; }
+    .btn-shuffle { background: linear-gradient(135deg, #00bcd4, #006064); color: #fff; }
+    .btn-clear-seats { background: rgba(255,255,255,0.15); color: #fff; border: 1.5px solid rgba(255,255,255,0.4) !important; min-width: 120px; max-width: 160px; font-size: 0.85rem; padding: 12px 18px; }
+    .name-list-info { color: rgba(255,255,255,0.8); font-size: 0.85rem; text-align: center; margin-bottom: 6px; }
+    .name-list-info span { color: #80deea; font-weight: 700; }
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,0.78); color: #fff; padding: 12px 28px;
+      border-radius: 30px; font-size: 0.92rem; pointer-events: none;
+      transition: transform 0.35s ease, opacity 0.35s; opacity: 0; z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .swap-panel {
+      width: 100%; max-width: 780px; background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 16px; padding: 20px 24px; margin-bottom: 20px;
+    }
+    .swap-panel-title { color: rgba(255,255,255,0.9); font-size: 0.9rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .swap-rows { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .swap-label { color: rgba(255,255,255,0.75); font-size: 0.82rem; font-weight: 600; white-space: nowrap; min-width: 52px; }
+    .swap-select {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.35); border-radius: 10px;
+      padding: 8px 12px; font-size: 0.85rem; font-family: inherit;
+      outline: none; cursor: pointer; transition: background 0.2s, border-color 0.2s; min-width: 90px;
+    }
+    .swap-select option { background: #006064; color: #fff; }
+    .swap-select:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.22); }
+    .swap-arrow { color: rgba(255,255,255,0.55); font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+    .btn-swap {
+      background: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.1));
+      color: #fff; border: 1.5px solid rgba(255,255,255,0.45); border-radius: 10px;
+      padding: 8px 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: background 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn-swap:hover { background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18)); transform: scale(1.04); }
+    .btn-swap:active { transform: scale(0.97); }
+    .swap-divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: 12px 0; }
+    @keyframes seatFlash { 0% { background: rgba(255,230,100,0.9); } 50% { background: rgba(255,200,50,0.7); } 100% { background: rgba(232,245,233,0.95); } }
+    .seat-cell.flash { animation: seatFlash 0.55s ease; }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 960px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } .hero-title { font-size: 2.2rem; } }
+    @media (max-width: 600px) {
+      .home-nav { padding: 14px 20px; }
+      .nav-logo-text { display: none; }
+      .hero-title { font-size: 1.6rem; letter-spacing: 1px; }
+      .home-hero { padding: 32px 20px 28px; }
+      .section-divider { padding: 0 20px; }
+      .cards-grid { grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; }
+      .card { padding: 22px 16px 18px; }
+      .card-icon-wrap { width: 42px; height: 42px; font-size: 20px; }
+      .card h2 { font-size: 0.9rem; }
+      .card p { font-size: 0.76rem; }
+      .card-arrow { font-size: 0.72rem; margin-top: 12px; }
+      .seat-grid { gap: 6px; }
+      .seat-cell { min-height: 52px; }
+      .seat-name { font-size: 0.78rem; }
+      .swap-panel { padding: 14px 16px; }
+      .swap-rows { gap: 8px; }
+      .info-select-grid { grid-template-columns: 1fr; gap: 16px; }
+      .info-select-card { padding: 28px 20px 24px; }
+    }
+    @media (max-width: 400px) { .cards-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- ===== 背景装饰 ===== -->
+<canvas id="bg-canvas"></canvas>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+
+<!-- ===== 主页 ===== -->
+<div id="home" class="page active">
+  <nav class="home-nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">🏫</div>
+      <span class="nav-logo-text">班级管理助手</span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-datetime">
+        <div class="nav-time" id="nav-clock">--:--:--</div>
+        <div class="nav-date" id="nav-date">加载中...</div>
+      </div>
+      <span class="nav-badge">智能教育</span>
+    </div>
+  </nav>
+
+  <div class="home-hero">
+    <div class="hero-tag">AI 赋能班级管理</div>
+    <h1 class="hero-title">班主任智能管理平台</h1>
+    <p class="hero-sub">六大功能模块 · 一站式班级管理 · 让教育更高效、更智能</p>
+  </div>
+
+  <div class="section-divider">
+    <span class="divider-label">功能模块</span>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card card-1" onclick="navigateTo('todo')">
+      <div class="card-icon-wrap"><span class="card-icon">📋</span></div>
+      <h2>班级待办事项</h2>
+      <p>记录班级日常事务<br/>跟踪任务完成进度</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+    <div class="card card-2" onclick="navigateTo('student-info')">
+      <div class="card-icon-wrap"><span class="card-icon">🔍</span></div>
+      <h2>学生信息查询</h2>
+      <p>快速查阅学生档案<br/>全面了解每位同学</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+    <div class="card card-3" onclick="navigateToAi('class-score')">
+      <div class="card-icon-wrap"><span class="card-icon">📊</span></div>
+      <h2>班级总体成绩分析</h2>
+      <p>班级一次或多次成绩分析<br/>横向纵向对比一目了然</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+    <div class="card card-4" onclick="navigateToAi('student-score')">
+      <div class="card-icon-wrap"><span class="card-icon">📈</span></div>
+      <h2>学生个人成绩分析</h2>
+      <p>个人成绩趋势追踪<br/>精准定位薄弱科目</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+    <div class="card card-5" onclick="navigateToAi('comment-gen')">
+      <div class="card-icon-wrap"><span class="card-icon">✍️</span></div>
+      <h2>学生个性化评语生成</h2>
+      <p>AI 智能生成个性评语<br/>高效温暖有温度</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+    <div class="card card-6" onclick="navigateTo('seat')">
+      <div class="card-icon-wrap"><span class="card-icon">🪑</span></div>
+      <h2>教室座位安排</h2>
+      <p>6×6 座位可视化编排<br/>一键随机分配学生座位</p>
+      <div class="card-arrow">进入模块 →</div>
+    </div>
+  </div>
+
+  <div class="home-footer">© 班主任班级管理助手 · 智能教育辅助系统</div>
+</div>
+
+<!-- ===== 待办事项页 ===== -->
+<div id="todo" class="page">
+  <div class="sub-header">
+    <button class="btn-back" onclick="navigateBack()">← 返回主页</button>
+    <span class="sub-header-title">📋 班级待办事项</span>
+    <span id="sync-badge-todo" class="sync-badge idle">○ 离线</span>
+  </div>
+  <div class="todo-body">
+    <div class="todo-input-card">
+      <h3>➕ 添加新待办</h3>
+      <div class="input-row">
+        <input type="text" id="todo-title" placeholder="输入待办事项标题（回车快速添加）" onkeydown="if(event.key==='Enter')addTodo()" />
+        <select id="todo-priority">
+          <option value="urgent">🔴 紧急</option>
+          <option value="normal" selected>🔵 普通</option>
+          <option value="relax">🟢 宽松</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <textarea id="todo-note" placeholder="备注（可选）..."></textarea>
+      </div>
+      <button class="btn-add-todo" onclick="addTodo()">添加待办</button>
+    </div>
+    <div class="todo-toolbar">
+      <span class="todo-stats" id="todo-stats">共 0 项，已完成 0 项</span>
+      <div class="toolbar-btns">
+        <button class="btn-sm" onclick="manualRefreshTodos()" title="从云端刷新">🔄 刷新</button>
+        <button class="btn-sm" onclick="completeAll()">✅ 全部完成</button>
+        <button class="btn-sm" onclick="clearDone()">🧹 清除已完成</button>
+        <button class="btn-sm danger" onclick="clearAll()">🗑️ 清空全部</button>
+      </div>
+    </div>
+    <div class="todo-list" id="todo-list"></div>
+    <div class="empty-hint" id="todo-empty" style="display:none">暂无待办事项，添加一条开始吧 😊</div>
+  </div>
+</div>
+
+<!-- ===== 学生信息二级选择页 ===== -->
+<div id="info-select" class="page">
+  <div class="sub-header">
+    <button class="btn-back" onclick="navigateBack()">← 返回主页</button>
+    <span class="sub-header-title">📋 学生信息管理</span>
+  </div>
+  <p class="perf-subtitle">请选择功能模块</p>
+  <div class="info-select-grid">
+    <div class="info-select-card" onclick="navigateTo('performance')">
+      <span class="info-select-icon">📝</span>
+      <h3>学生日常表现记录</h3>
+      <p>导入名单，记录奖惩、成绩等日常表现，自动记录时间</p>
+      <span class="info-select-arrow">→</span>
+    </div>
+    <div class="info-select-card-full">
+      <div class="card-icon-wrap"><span class="card-icon">🔍</span></div>
+      <h2>学生信息智能查询</h2>
+      <p>AI 智能查询学生档案、家长信息等全方位信息</p>
+      <button class="info-select-use-btn" onclick="navigateToAi('student-info')">立即使用 AI 助手 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 学生日常表现记录页 ===== -->
+<div id="performance" class="page">
+  <div class="sub-header">
+    <button class="btn-back" onclick="navigateBack()">← 返回</button>
+    <span class="sub-header-title">📝 学生日常表现记录</span>
+    <div class="sub-header-actions">
+      <button class="btn-refresh" onclick="refreshPerfData()">🔄 刷新</button>
+      <span id="sync-badge-perf" class="sync-badge idle">○ 离线</span>
+    </div>
+  </div>
+  <div class="perf-body">
+    <div class="perf-import-area">
+      <label>📂 学生名单：</label>
+      <button class="perf-import-btn" onclick="document.getElementById('perf-file-input').click()">
+        📁 选择文件导入
+      </button>
+      <input type="file" id="perf-file-input" accept=".txt,.csv,.xlsx,.xls" style="display:none" onchange="perfHandleFile(event)" />
+      <div class="perf-names-preview" id="perf-names-preview">尚未导入名单</div>
+    </div>
+    <div class="perf-layout">
+      <div class="perf-left" id="perf-student-list">
+        <div class="perf-left-title">👥 学生列表</div>
+        <div class="perf-left-empty" id="perf-left-empty">请先导入学生名单<br/>支持 .txt / .csv / .xlsx 格式</div>
+      </div>
+      <div class="perf-right" id="perf-right">
+        <div class="perf-no-student" id="perf-no-student">
+          <span class="big-icon">👈</span>
+          <span>请在左侧选择一名学生<br/>然后添加日常表现记录</span>
+        </div>
+        <div class="perf-form-card" id="perf-form-card" style="display:none">
+          <h3>➕ 添加表现记录</h3>
+          <div class="perf-form-row">
+            <div class="perf-form-group">
+              <label>记录类型</label>
+              <select id="perf-record-type" onchange="perfOnTypeChange()">
+                <option value="reward">🏆 奖励</option>
+                <option value="punish">📕 惩罚</option>
+                <option value="grade">📊 成绩情况</option>
+                <option value="other">📝 其他</option>
+              </select>
+            </div>
+            <div class="perf-form-group" id="perf-grade-subject-group" style="display:none">
+              <label>科目</label>
+              <input type="text" id="perf-grade-subject" placeholder="如：数学" />
+            </div>
+            <div class="perf-form-group" id="perf-grade-score-group" style="display:none">
+              <label>分数/等级</label>
+              <input type="text" id="perf-grade-score" placeholder="如：95 或 A" />
+            </div>
+          </div>
+          <div class="perf-form-row">
+            <div class="perf-form-group" style="flex:1">
+              <label>详细内容</label>
+              <textarea id="perf-record-content" placeholder="请输入具体内容..."></textarea>
+            </div>
+          </div>
+          <button class="perf-btn-add" onclick="perfAddRecord()">✅ 添加记录</button>
+        </div>
+        <div class="perf-records-card" id="perf-records-card" style="display:none">
+          <h3 id="perf-records-title">📋 记录列表</h3>
+          <div class="perf-records-list" id="perf-records-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 座位安排页 ===== -->
+<div id="seat" class="page">
+  <div class="sub-header">
+    <button class="btn-back" onclick="navigateBack()">← 返回主页</button>
+    <span class="sub-header-title">🪑 教室座位安排</span>
+  </div>
+  <div class="seat-body">
+    <div class="seat-grid" id="seat-grid"></div>
+    <div class="podium podium-bottom">📖 讲 台</div>
+    <div class="name-list-info" id="name-list-info">尚未上传学生名单</div>
+    <div class="swap-panel">
+      <div class="swap-panel-title">🔄 行 / 列 整体调换</div>
+      <div class="swap-rows">
+        <span class="swap-label">↕ 行调换</span>
+        <select class="swap-select" id="swap-row-a">
+          <option value="5">第 1 行（最下方）</option>
+          <option value="4">第 2 行</option>
+          <option value="3">第 3 行</option>
+          <option value="2">第 4 行</option>
+          <option value="1">第 5 行</option>
+          <option value="0">第 6 行（最上方）</option>
+        </select>
+        <span class="swap-arrow">⇌</span>
+        <select class="swap-select" id="swap-row-b">
+          <option value="5">第 1 行（最下方）</option>
+          <option value="4" selected>第 2 行</option>
+          <option value="3">第 3 行</option>
+          <option value="2">第 4 行</option>
+          <option value="1">第 5 行</option>
+          <option value="0">第 6 行（最上方）</option>
+        </select>
+        <button class="btn-swap" onclick="swapRows()">✅ 执行行调换</button>
+      </div>
+      <div class="swap-divider"></div>
+      <div class="swap-rows">
+        <span class="swap-label">↔ 列调换</span>
+        <select class="swap-select" id="swap-col-a">
+          <option value="5">第 1 列（最右侧）</option>
+          <option value="4">第 2 列</option>
+          <option value="3">第 3 列</option>
+          <option value="2">第 4 列</option>
+          <option value="1">第 5 列</option>
+          <option value="0">第 6 列（最左侧）</option>
+        </select>
+        <span class="swap-arrow">⇌</span>
+        <select class="swap-select" id="swap-col-b">
+          <option value="5">第 1 列（最右侧）</option>
+          <option value="4" selected>第 2 列</option>
+          <option value="3">第 3 列</option>
+          <option value="2">第 4 列</option>
+          <option value="1">第 5 列</option>
+          <option value="0">第 6 列（最左侧）</option>
+        </select>
+        <button class="btn-swap" onclick="swapCols()">✅ 执行列调换</button>
+      </div>
+    </div>
+    <div class="seat-actions">
+      <button class="seat-btn btn-upload" onclick="document.getElementById('file-input').click()">
+        📂 上传学生名单文件
+      </button>
+      <button class="seat-btn btn-shuffle" onclick="shuffleSeats()">
+        🔀 开始随机安排座位
+      </button>
+      <button class="seat-btn btn-clear-seats" onclick="clearSeats()">
+        🗑️ 清空座位
+      </button>
+    </div>
+    <input type="file" id="file-input" accept=".txt,.csv,.xlsx,.xls" style="display:none" onchange="handleFileUpload(event)" />
+  </div>
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== 外部依赖（异步加载，不阻塞页面）===== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async onerror="console.warn('Supabase CDN加载失败，云端同步功能不可用')"></script>
+
+<!-- ===== 主脚本 ===== -->
+<script>
+// ══════════════════════════════════════════════════════════════
+// 导航系统（唯一版本，清晰简洁）
+// ══════════════════════════════════════════════════════════════
+
+// AI 外部链接映射（只有这些类型才直接跳转AI）
+const AI_URLS = {
+  'class-score':   'http://171.111.194.87:9015/chat/o0KxUg59fxQZ5M42',
+  'student-score': 'http://171.111.194.87:9015/chat/o0KxUg59fxQZ5M42',
+  'comment-gen':   'http://171.111.194.87:9015/chat/o0KxUg59fxQZ5M42'
+};
+
+// 页面 ID 映射
+const PAGE_MAP = {
+  'todo':          'todo',
+  'student-info':   'info-select',
+  'performance':   'performance',
+  'seat':          'seat'
+};
+
+// 跳转到指定页面
+function navigateTo(type) {
+  // AI 类：直接打开外部链接
+  if (AI_URLS[type]) {
+    window.open(AI_URLS[type], '_blank');
+    return;
+  }
+  
+  // 普通页面
+  const pageId = PAGE_MAP[type];
+  if (!pageId) return;
+  
+  // 隐藏所有页面
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+  });
+  
+  // 显示目标页面
+  const target = document.getElementById(pageId);
+  if (target) {
+    target.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+}
+
+// 返回主页
+function navigateBack() {
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+  });
+  const home = document.getElementById('home');
+  if (home) {
+    home.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+}
+
+// AI 跳转（带额外参数）
+function navigateToAi(type) {
+  if (AI_URLS[type]) {
+    window.open(AI_URLS[type], '_blank');
+  } else if (type === 'student-info') {
+    // 学生信息智能查询：跳转到 AI 助手页面
+    window.open('http://171.111.194.87:9015/chat/o0KxUg59fxQZ5M42', '_blank');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Supabase 云端数据库初始化
+// ══════════════════════════════════════════════════════════════
+let supabaseClient = null;
+const SUPABASE_URL = 'https://iqjmzzvjwhsmsvdzerlt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tiKet0hK_EJKr-AECZ9ESA_nYpF84GU';
+
+function initSupabase() {
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase 初始化成功');
+      return true;
+    }
+  } catch (e) {
+    console.warn('Supabase 初始化失败：', e);
+  }
+  return false;
+}
+
+// 页面加载后尝试初始化 Supabase
+window.addEventListener('load', function() {
+  if (!initSupabase()) {
+    // 如果失败，每秒重试一次（最多30秒）
+    let attempts = 0;
+    const retryInterval = setInterval(() => {
+      attempts++;
+      if (initSupabase() || attempts >= 30) {
+        clearInterval(retryInterval);
+        if (!supabaseClient) {
+          console.warn('Supabase 库加载超时，云端同步功能不可用');
+        } else {
+          // Supabase 初始化成功后启动云端轮询
+          startCloudPolling();
+          startPerfCloudPolling();
+        }
+      }
+    }, 1000);
+  } else {
+    // Supabase 已初始化，启动云端轮询
+    startCloudPolling();
+    startPerfCloudPolling();
+  }
+});
+
+// 同步状态徽章
+function setSyncBadge(which, status) {
+  const el = document.getElementById(which === 'todo' ? 'sync-badge-todo' : 'sync-badge-perf');
+  if (!el) return;
+  if (status === 'syncing') { el.textContent = '⟳ 同步中'; el.className = 'sync-badge syncing'; }
+  else if (status === 'ok') { el.textContent = '✓ 已同步'; el.className = 'sync-badge ok'; }
+  else if (status === 'error') { el.textContent = '✕ 同步失败'; el.className = 'sync-badge error'; }
+  else { el.textContent = '○ 离线'; el.className = 'sync-badge idle'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 待办事项模块
+// ══════════════════════════════════════════════════════════════
+const TODO_STORAGE_KEY = 'class_todos_v1';
+let todos = [];
+let lastCloudHash = ''; // 用于检测云端是否有更新
+
+// 定期检查云端是否有更新（每15秒）
+let cloudPollingTimer = null;
+function startCloudPolling() {
+  if (cloudPollingTimer) clearInterval(cloudPollingTimer);
+  cloudPollingTimer = setInterval(async () => {
+    if (!supabaseClient) return;
+    // 只有在待办事项页面可见时才检查
+    const todoPage = document.getElementById('todo');
+    if (!todoPage || !todoPage.classList.contains('active')) return;
+
+    try {
+      const { data } = await supabaseClient
+        .from('todos')
+        .select('id, text, completed, created_at')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const currentHash = JSON.stringify(data.map(r => r.id + '-' + r.completed));
+        if (currentHash !== lastCloudHash && lastCloudHash !== '') {
+          console.log('🔄 检测到云端数据变化，正在刷新...');
+          await loadTodos();
+        }
+        lastCloudHash = currentHash;
+      }
+    } catch (e) {
+      console.warn('轮询检查失败', e);
+    }
+  }, 15000); // 每15秒检查一次
+}
+
+// 表现记录云端轮询
+let perfPollingTimer = null;
+let lastPerfCloudHash = '';
+function startPerfCloudPolling() {
+  if (perfPollingTimer) clearInterval(perfPollingTimer);
+  perfPollingTimer = setInterval(async () => {
+    if (!supabaseClient) return;
+    // 只有在表现记录页面可见时才检查
+    const perfPage = document.getElementById('performance');
+    if (!perfPage || !perfPage.classList.contains('active')) return;
+
+    try {
+      const { data } = await supabaseClient
+        .from('performance_records')
+        .select('id, student_name, record_type, content, subject, score, record_date, created_at')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const currentHash = JSON.stringify(data.map(r => r.id + '-' + r.updated_at));
+        if (currentHash !== lastPerfCloudHash && lastPerfCloudHash !== '') {
+          console.log('🔄 检测到表现记录云端数据变化，正在刷新...');
+          await refreshPerfData();
+        }
+        lastPerfCloudHash = currentHash;
+      }
+    } catch (e) {
+      console.warn('表现记录轮询检查失败', e);
+    }
+  }, 15000); // 每15秒检查一次
+}
+
+async function loadTodos() {
+  setSyncBadge('todo', 'syncing');
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('todos')
+        .select('id, text, completed, created_at')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      todos = (data || []).map(r => {
+        const parts = (r.text || '').split('\n');
+        return {
+          id: r.id, title: parts[0] || '', note: parts.slice(1).join('\n') || '',
+          priority: 'normal', done: r.completed || false,
+          time: r.created_at ? new Date(r.created_at).toLocaleString('zh-CN', { hour12: false }) : ''
+        };
+      });
+      setSyncBadge('todo', 'ok');
+      localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
+      // 更新哈希值，用于检测变化
+      lastCloudHash = JSON.stringify(todos.map(t => t.id + '-' + t.done));
+      renderTodos(); // 加载后立即渲染，确保显示云端最新数据
+      return;
+    } catch (e) { console.warn('Supabase 加载失败', e); }
+  }
+  try { const raw = localStorage.getItem(TODO_STORAGE_KEY); todos = raw ? JSON.parse(raw) : []; } catch (e) { todos = []; }
+  setSyncBadge('todo', 'error');
+}
+
+async function syncTodosToCloud() {
+  setSyncBadge('todo', 'syncing');
+  if (!supabaseClient) { setSyncBadge('todo', 'error'); return false; }
+  try {
+    await supabaseClient.from('todos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (todos.length > 0) {
+      const rows = todos.map(t => ({
+        id: t.id, text: t.title + (t.note ? '\n' + t.note : ''), completed: t.done,
+        created_at: t.time ? new Date(t.time) : new Date()
+      }));
+      await supabaseClient.from('todos').insert(rows);
+    }
+    setSyncBadge('todo', 'ok');
+    console.log('☁️ 同步成功，共', todos.length, '条待办');
+    // 同步完成后重新渲染，确保页面显示最新数据
+    renderTodos();
+    return true;
+  } catch (e) { 
+    console.error('❌ 同步失败:', e.message || e); 
+    setSyncBadge('todo', 'error'); 
+    return false;
+  }
+}
+
+function saveTodosLocal() {
+  try { localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos)); } catch (e) {}
+}
+
+async function addTodo() {
+  const title = document.getElementById('todo-title').value.trim();
+  if (!title) { document.getElementById('todo-title').focus(); return; }
+  const item = {
+    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+    title, note: document.getElementById('todo-note').value.trim(),
+    priority: document.getElementById('todo-priority').value,
+    done: false, time: new Date().toLocaleString('zh-CN', { hour12: false })
+  };
+  todos.unshift(item);
+  saveTodosLocal();
+  renderTodos();
+  await syncTodosToCloud();
+  console.log('✅ 待办已添加并同步到云端');
+  document.getElementById('todo-title').value = '';
+  document.getElementById('todo-note').value = '';
+  document.getElementById('todo-priority').value = 'normal';
+  document.getElementById('todo-title').focus();
+}
+
+async function toggleDone(id) {
+  const t = todos.find(x => x.id == id);
+  if (t) { t.done = !t.done; saveTodosLocal(); renderTodos(); await syncTodosToCloud(); }
+}
+
+async function deleteTodo(id) {
+  todos = todos.filter(x => x.id != id);
+  saveTodosLocal();
+  renderTodos();
+  await syncTodosToCloud();
+}
+
+function completeAll() { todos.forEach(t => t.done = true); saveTodosLocal(); syncTodosToCloud(); renderTodos(); }
+function clearDone() { todos = todos.filter(t => !t.done); saveTodosLocal(); syncTodosToCloud(); renderTodos(); }
+function clearAll() {
+  if (todos.length === 0) return;
+  if (!confirm('确定要清空全部待办事项吗？')) return;
+  todos = []; saveTodosLocal(); syncTodosToCloud(); renderTodos();
+}
+
+async function manualRefreshTodos() {
+  showToast('🔄 正在从云端刷新...');
+  await loadTodos();
+  showToast('✅ 已刷新最新数据');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTodos() {
+  const list = document.getElementById('todo-list');
+  const empty = document.getElementById('todo-empty');
+  const stats = document.getElementById('todo-stats');
+  const doneCount = todos.filter(t => t.done).length;
+  stats.textContent = `共 ${todos.length} 项，已完成 ${doneCount} 项`;
+  if (todos.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  const PRI_LABEL = { urgent: '紧急', normal: '普通', relax: '宽松' };
+  const PRI_CLASS = { urgent: 'priority-urgent', normal: 'priority-normal', relax: 'priority-relax' };
+  list.innerHTML = todos.map(t => `
+    <div class="todo-item ${t.done ? 'done' : ''}">
+      <div class="todo-check ${t.done ? 'checked' : ''}" onclick="toggleDone('${t.id}')"></div>
+      <div class="todo-content">
+        <div class="todo-text">${escHtml(t.title)}<span class="priority-badge ${PRI_CLASS[t.priority]}">${PRI_LABEL[t.priority]}</span></div>
+        ${t.note ? `<div class="todo-note-text">${escHtml(t.note)}</div>` : ''}
+        <div class="todo-time">🕐 ${t.time}</div>
+      </div>
+      <button class="btn-del" onclick="deleteTodo('${t.id}')" title="删除">✕</button>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 座位安排模块
+// ══════════════════════════════════════════════════════════════
+const SEAT_ROWS = 6, SEAT_COLS = 6, SEAT_TOTAL = 36;
+const SEAT_STORAGE = 'class_seats_v1';
+const NAMES_STORAGE = 'class_names_v1';
+let studentNames = [];
+
+function initSeatGrid() {
+  const grid = document.getElementById('seat-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < SEAT_TOTAL; i++) {
+    const seatNum = SEAT_TOTAL - i;
+    const cell = document.createElement('div');
+    cell.className = 'seat-cell';
+    cell.innerHTML = `<span class="seat-num">${seatNum}</span><input class="seat-name" type="text" placeholder="空位" data-idx="${i}" oninput="onSeatNameChange(${i}, this.value)" onfocus="this.select()" />`;
+    grid.appendChild(cell);
+  }
+  loadSeatData();
+}
+
+function getSeatInput(idx) { return document.querySelector(`.seat-name[data-idx="${idx}"]`); }
+function updateCellStyle(idx, val) {
+  const cell = getSeatInput(idx)?.closest('.seat-cell');
+  if (!cell) return;
+  cell.classList.toggle('occupied', val && val.trim());
+}
+function onSeatNameChange(idx, val) { updateCellStyle(idx, val); saveSeatData(); }
+function saveSeatData() {
+  const data = [];
+  for (let i = 0; i < SEAT_TOTAL; i++) { const inp = getSeatInput(i); data.push(inp ? inp.value : ''); }
+  try { localStorage.setItem(SEAT_STORAGE, JSON.stringify(data)); } catch(e) {}
+}
+function loadSeatData() {
+  try {
+    const raw = localStorage.getItem(SEAT_STORAGE);
+    if (raw) {
+      JSON.parse(raw).forEach((n, i) => {
+        const inp = getSeatInput(i);
+        if (inp) { inp.value = n || ''; updateCellStyle(i, n); }
+      });
+    }
+    const rawNames = localStorage.getItem(NAMES_STORAGE);
+    if (rawNames) { studentNames = JSON.parse(rawNames); updateNamesInfo(); }
+  } catch (e) {}
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function shuffleSeats() {
+  if (studentNames.length === 0) { showToast('⚠️ 请先上传学生名单！'); return; }
+  const shuffled = shuffleArray(studentNames);
+  for (let seatNum = 1; seatNum <= SEAT_TOTAL; seatNum++) {
+    const row = 5 - Math.floor((seatNum - 1) / 6);
+    const posInRow = (seatNum - 1) % 6;
+    const col = row % 2 === 1 ? 5 - posInRow : posInRow;
+    const htmlIdx = row * SEAT_COLS + col;
+    const inp = getSeatInput(htmlIdx);
+    if (inp) { inp.value = shuffled[seatNum - 1] || ''; updateCellStyle(htmlIdx, inp.value); }
+  }
+  saveSeatData();
+  showToast(`✅ 已随机安排 ${Math.min(studentNames.length, SEAT_TOTAL)} 位同学！`);
+}
+
+function clearSeats() {
+  if (!confirm('确定要清空所有座位吗？')) return;
+  for (let i = 0; i < SEAT_TOTAL; i++) { const inp = getSeatInput(i); if (inp) { inp.value = ''; updateCellStyle(i, ''); } }
+  saveSeatData();
+  showToast('🗑️ 座位已清空');
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'txt' || ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = (e) => parseNamesFromText(e.target.result, file.name);
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = (e) => extractNamesFromXlsx(new Uint8Array(e.target.result), file.name);
+    reader.readAsArrayBuffer(file);
+  } else { showToast('⚠️ 请上传 .txt、.csv 或 .xlsx 格式'); }
+  event.target.value = '';
+}
+
+function parseNamesFromText(text, filename) {
+  const names = text.split(/[\r\n,，、\t]+/).map(n => n.trim()).filter(n => n.length >= 1 && n.length <= 8);
+  if (names.length === 0) { showToast('⚠️ 未能识别到学生姓名'); return; }
+  applyNameList(names, filename);
+}
+
+function extractNamesFromXlsx(buffer, filename) {
+  try {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+    const matches = [...text.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)] || [];
+    const extracted = matches.map(m => m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim())
+      .filter(n => n.length >= 1 && n.length <= 8 && /[\u4e00-\u9fa5a-zA-Z]/.test(n));
+    if (extracted.length > 0) { applyNameList(extracted, filename); return; }
+    const chinese = text.match(/[\u4e00-\u9fa5]{2,5}/g) || [];
+    const filtered = [...new Set(chinese)].filter(n => !['工作表','工作簿','学生','姓名','班级','序号'].includes(n));
+    if (filtered.length > 0) applyNameList(filtered, filename);
+    else showToast('⚠️ 无法从 xlsx 提取姓名');
+  } catch(e) { showToast('⚠️ 文件读取失败'); }
+}
+
+function applyNameList(names, filename) {
+  studentNames = names;
+  try { localStorage.setItem(NAMES_STORAGE, JSON.stringify(names)); } catch(e) {}
+  updateNamesInfo();
+  showToast(`✅ 成功读取 ${names.length} 位学生姓名！`);
+}
+
+function updateNamesInfo() {
+  const el = document.getElementById('name-list-info');
+  if (!el) return;
+  if (studentNames.length === 0) { el.innerHTML = '尚未上传学生名单'; }
+  else { el.innerHTML = `已载入 <span>${studentNames.length}</span> 位学生：${studentNames.slice(0, 6).join('、')}${studentNames.length > 6 ? ' ...' : ''}`; }
+}
+
+function getSeatMatrix() {
+  const mat = [];
+  for (let r = 0; r < SEAT_ROWS; r++) {
+    mat[r] = [];
+    for (let c = 0; c < SEAT_COLS; c++) {
+      const inp = getSeatInput(r * SEAT_COLS + c);
+      mat[r][c] = inp ? inp.value : '';
+    }
+  }
+  return mat;
+}
+
+function applySeatMatrix(mat, flashIdxs) {
+  for (let r = 0; r < SEAT_ROWS; r++) {
+    for (let c = 0; c < SEAT_COLS; c++) {
+      const idx = r * SEAT_COLS + c;
+      const inp = getSeatInput(idx);
+      if (inp) { inp.value = mat[r][c]; updateCellStyle(idx, mat[r][c]); }
+    }
+  }
+  saveSeatData();
+  flashIdxs.forEach(idx => {
+    const cell = getSeatInput(idx)?.closest('.seat-cell');
+    if (!cell) return;
+    cell.classList.remove('flash');
+    void cell.offsetWidth;
+    cell.classList.add('flash');
+    setTimeout(() => cell.classList.remove('flash'), 600);
+  });
+}
+
+function swapRows() {
+  const rA = parseInt(document.getElementById('swap-row-a').value);
+  const rB = parseInt(document.getElementById('swap-row-b').value);
+  if (rA === rB) { showToast('⚠️ 请选择两行不同的行！'); return; }
+  const mat = getSeatMatrix();
+  [mat[rA], mat[rB]] = [mat[rB], mat[rA]];
+  const flashIdxs = [];
+  for (let c = 0; c < SEAT_COLS; c++) { flashIdxs.push(rA * SEAT_COLS + c); flashIdxs.push(rB * SEAT_COLS + c); }
+  applySeatMatrix(mat, flashIdxs);
+  showToast(`✅ 第 ${SEAT_ROWS - rA} 行 ⇌ 第 ${SEAT_ROWS - rB} 行 调换完成！`);
+}
+
+function swapCols() {
+  const cA = parseInt(document.getElementById('swap-col-a').value);
+  const cB = parseInt(document.getElementById('swap-col-b').value);
+  if (cA === cB) { showToast('⚠️ 请选择两列不同的列！'); return; }
+  const mat = getSeatMatrix();
+  for (let r = 0; r < SEAT_ROWS; r++) { [mat[r][cA], mat[r][cB]] = [mat[r][cB], mat[r][cA]]; }
+  const flashIdxs = [];
+  for (let r = 0; r < SEAT_ROWS; r++) { flashIdxs.push(r * SEAT_COLS + cA); flashIdxs.push(r * SEAT_COLS + cB); }
+  applySeatMatrix(mat, flashIdxs);
+  showToast(`✅ 第 ${SEAT_COLS - cA} 列 ⇌ 第 ${SEAT_COLS - cB} 列 调换完成！`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 学生日常表现记录模块
+// ══════════════════════════════════════════════════════════════
+const PERF_STUDENTS_KEY = 'perf_students_v1';
+const PERF_RECORDS_KEY = 'perf_records_v1';
+let perfStudentNames = [];
+let perfRecords = {};
+let perfSelectedStudent = null;
+
+async function perfLoadData() {
+  setSyncBadge('perf', 'syncing');
+  if (supabaseClient) {
+    try {
+      // 先尝试从 student_list 表加载学生名单
+      let loadedFromStudentList = await loadPerfStudentListFromCloud();
+      // 再从 performance_records 表加载记录
+      const { data, error } = await supabaseClient
+        .from('performance_records')
+        .select('id, student_name, record_type, content, subject, score, record_date, created_at')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      // 合并学生名单（从 student_list 表来的已保存在 perfStudentNames 中）
+      // 再从 performance_records 中添加可能有但 student_list 中没有的名字
+      const allNames = new Set(perfStudentNames);
+      (data || []).forEach(r => allNames.add(r.student_name));
+      perfStudentNames = [...allNames];
+      // 确保所有学生都有记录数组
+      perfStudentNames.forEach(n => { if (!perfRecords[n]) perfRecords[n] = []; });
+      // 清空并重新填充记录
+      perfRecords = {};
+      perfStudentNames.forEach(n => { perfRecords[n] = []; });
+      (data || []).forEach(r => {
+        const rec = { id: r.id, date: r.record_date || '', type: r.record_type, content: r.content, subject: r.subject || '', score: r.score || '' };
+        if (!perfRecords[r.student_name]) perfRecords[r.student_name] = [];
+        perfRecords[r.student_name].unshift(rec);
+      });
+      setSyncBadge('perf', 'ok');
+      localStorage.setItem(PERF_STUDENTS_KEY, JSON.stringify(perfStudentNames));
+      localStorage.setItem(PERF_RECORDS_KEY, JSON.stringify(perfRecords));
+      return;
+    } catch (e) { console.warn('Supabase 加载失败', e); }
+  }
+  // 回退到 localStorage
+  try {
+    const raw1 = localStorage.getItem(PERF_STUDENTS_KEY);
+    if (raw1) perfStudentNames = JSON.parse(raw1);
+    const raw2 = localStorage.getItem(PERF_RECORDS_KEY);
+    if (raw2) perfRecords = JSON.parse(raw2);
+  } catch(e) { perfStudentNames = []; perfRecords = {}; }
+  setSyncBadge('perf', 'error');
+}
+
+async function syncPerfRecord(record, studentName, action) {
+  setSyncBadge('perf', 'syncing');
+  if (!supabaseClient) { setSyncBadge('perf', 'error'); return; }
+  try {
+    // id 使用 TEXT 格式，避免 UUID 格式不匹配
+  const row = { id: record.id, student_name: studentName, record_type: record.type, content: record.content, subject: record.subject || null, score: record.score || null, record_date: record.date || '', created_at: new Date().toISOString() };
+    if (action === 'delete') { await supabaseClient.from('performance_records').delete().eq('id', record.id); }
+    else { await supabaseClient.from('performance_records').upsert(row, { onConflict: 'id' }); }
+    setSyncBadge('perf', 'ok');
+  } catch (e) { console.warn('同步失败', e); setSyncBadge('perf', 'error'); }
+}
+
+function perfSaveData() {
+  try { localStorage.setItem(PERF_STUDENTS_KEY, JSON.stringify(perfStudentNames)); localStorage.setItem(PERF_RECORDS_KEY, JSON.stringify(perfRecords)); } catch(e) {}
+}
+
+// 同步学生名单到 Supabase（覆盖式：先删后插）
+async function syncPerfStudentList() {
+  if (!supabaseClient) {
+    console.warn('Supabase 未初始化，无法同步学生名单');
+    return false;
+  }
+  try {
+    setSyncBadge('perf', 'syncing');
+    console.log('🔄 正在同步学生名单到云端...');
+    
+    // 先获取现有数据
+    const { data: existingData } = await supabaseClient
+      .from('student_list')
+      .select('id')
+      .limit(1);
+    
+    // 如果有旧数据，先删除所有
+    if (existingData !== null) {
+      const { error: deleteError } = await supabaseClient
+        .from('student_list')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (deleteError) {
+        console.warn('删除旧名单失败，将尝试直接覆盖', deleteError);
+      }
+    }
+    
+    // 插入新名单
+    if (perfStudentNames.length > 0) {
+      const rows = perfStudentNames.map((name, i) => ({ name, sort_order: i }));
+      const { error: insertError } = await supabaseClient
+        .from('student_list')
+        .insert(rows);
+      if (insertError) throw insertError;
+    }
+    
+    console.log(`✅ 学生名单已同步到云端（共 ${perfStudentNames.length} 人）`);
+    setSyncBadge('perf', 'ok');
+    return true;
+  } catch (e) { 
+    console.error('学生名单同步失败', e);
+    setSyncBadge('perf', 'error');
+    return false;
+  }
+}
+
+// 从 Supabase 加载学生名单
+async function loadPerfStudentListFromCloud() {
+  if (!supabaseClient) return false;
+  try {
+    const { data, error } = await supabaseClient.from('student_list').select('name').order('sort_order', { ascending: true });
+    if (error) throw error;
+    if (data && data.length > 0) {
+      perfStudentNames = data.map(r => r.name);
+      perfStudentNames.forEach(n => { if (!perfRecords[n]) perfRecords[n] = []; });
+      perfSaveData();
+      return true;
+    }
+  } catch (e) { console.warn('从云端加载学生名单失败', e); }
+  return false;
+}
+
+// 刷新表现记录数据（手动点击刷新按钮时调用）
+async function refreshPerfData() {
+  showToast('🔄 正在从云端刷新...');
+  setSyncBadge('perf', 'syncing');
+  try {
+    // 先尝试从 student_list 表加载名单
+    await loadPerfStudentListFromCloud();
+    // 再从 performance_records 表加载记录
+    const { data, error } = await supabaseClient
+      .from('performance_records')
+      .select('id, student_name, record_type, content, subject, score, record_date, created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    // 保留 student_list 中的名单，只添加可能有记录但名单中没有的名字
+    const allNames = new Set(perfStudentNames);
+    (data || []).forEach(r => allNames.add(r.student_name));
+    perfStudentNames = [...allNames];
+    // 确保所有学生都有记录数组
+    perfStudentNames.forEach(n => { if (!perfRecords[n]) perfRecords[n] = []; });
+    // 清空并重新填充记录
+    perfRecords = {};
+    perfStudentNames.forEach(n => { perfRecords[n] = []; });
+    (data || []).forEach(r => {
+      const rec = { id: r.id, date: r.record_date || '', type: r.record_type, content: r.content, subject: r.subject || '', score: r.score || '' };
+      if (!perfRecords[r.student_name]) perfRecords[r.student_name] = [];
+      perfRecords[r.student_name].unshift(rec);
+    });
+    perfSaveData();
+    perfRenderStudentList();
+    perfUpdatePreview();
+    if (perfSelectedStudent) {
+      perfRenderRecords();
+      document.getElementById('perf-form-card').style.display = '';
+      document.getElementById('perf-records-card').style.display = '';
+      document.getElementById('perf-no-student').style.display = 'none';
+    }
+    setSyncBadge('perf', 'ok');
+    showToast('✅ 云端数据已同步！');
+  } catch (e) {
+    console.warn('刷新失败', e);
+    setSyncBadge('perf', 'error');
+    showToast('⚠️ 刷新失败，使用本地数据');
+  }
+}
+
+function perfApplyNameList(names) {
+  perfStudentNames = [...new Set(names)];
+  perfStudentNames.forEach(n => { if (!perfRecords[n]) perfRecords[n] = []; });
+  perfSaveData();
+  perfRenderStudentList();
+  perfSelectedStudent = null;
+  perfShowNoStudent();
+  perfUpdatePreview();
+  showToast(`✅ 已导入 ${perfStudentNames.length} 位学生！`);
+  
+  // 立即同步学生名单到云端
+  syncPerfStudentList().then(success => {
+    if (success) {
+      console.log('📤 学生名单已上传到云端');
+    }
+  });
+}
+
+function perfHandleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'txt' || ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = (e) => parsePerfNamesFromText(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = (e) => extractPerfNamesFromXlsx(new Uint8Array(e.target.result));
+    reader.readAsArrayBuffer(file);
+  } else { showToast('⚠️ 请上传 .txt / .csv / .xlsx 格式'); }
+  event.target.value = '';
+}
+
+function parsePerfNamesFromText(text) {
+  const names = text.split(/[\r\n,，、\t]+/).map(n => n.trim()).filter(n => n.length >= 1 && n.length <= 8);
+  if (names.length === 0) { showToast('⚠️ 未识别到姓名'); return; }
+  perfApplyNameList(names);
+}
+
+function extractPerfNamesFromXlsx(buffer) {
+  try {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+    const matches = [...text.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)] || [];
+    const extracted = matches.map(m => m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim())
+      .filter(n => n.length >= 1 && n.length <= 8 && /[\u4e00-\u9fa5a-zA-Z]/.test(n));
+    if (extracted.length > 0) { perfApplyNameList(extracted); return; }
+    const chinese = text.match(/[\u4e00-\u9fa5]{2,5}/g) || [];
+    const filtered = [...new Set(chinese)].filter(n => !['工作表','工作簿','学生','姓名','班级','序号'].includes(n));
+    if (filtered.length > 0) perfApplyNameList(filtered);
+    else showToast('⚠️ 无法提取姓名，请用 .txt 格式');
+  } catch(e) { showToast('⚠️ 文件读取失败'); }
+}
+
+function perfUpdatePreview() {
+  const el = document.getElementById('perf-names-preview');
+  if (!el) return;
+  if (perfStudentNames.length === 0) { el.innerHTML = '尚未导入名单'; }
+  else { el.innerHTML = `已导入 <span>${perfStudentNames.length}</span> 人：${perfStudentNames.slice(0, 8).join('、')}${perfStudentNames.length > 8 ? ' ...' : ''}`; }
+}
+
+function perfRenderStudentList() {
+  const listEl = document.getElementById('perf-student-list');
+  const emptyEl = document.getElementById('perf-left-empty');
+  if (!listEl) return;
+  listEl.querySelectorAll('.perf-student-item').forEach(i => i.remove());
+  if (perfStudentNames.length === 0) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+  if (emptyEl) emptyEl.style.display = 'none';
+  perfStudentNames.forEach((name, idx) => {
+    const item = document.createElement('div');
+    item.className = 'perf-student-item' + (name === perfSelectedStudent ? ' active' : '');
+    item.dataset.name = name;
+    item.innerHTML = `<span class="perf-student-idx">${idx + 1}</span>${escHtml(name)}`;
+    item.onclick = () => perfSelectStudent(name);
+    listEl.appendChild(item);
+  });
+}
+
+function perfSelectStudent(name) {
+  perfSelectedStudent = name;
+  document.querySelectorAll('.perf-student-item').forEach(item => { item.classList.toggle('active', item.dataset.name === name); });
+  document.getElementById('perf-no-student').style.display = 'none';
+  document.getElementById('perf-form-card').style.display = 'block';
+  document.getElementById('perf-records-card').style.display = 'block';
+  document.getElementById('perf-records-title').textContent = `📋 ${escHtml(name)} 的表现记录`;
+  perfRenderRecords();
+}
+
+function perfShowNoStudent() {
+  document.getElementById('perf-no-student').style.display = 'flex';
+  document.getElementById('perf-form-card').style.display = 'none';
+  document.getElementById('perf-records-card').style.display = 'none';
+}
+
+function perfOnTypeChange() {
+  const type = document.getElementById('perf-record-type').value;
+  document.getElementById('perf-grade-subject-group').style.display = type === 'grade' ? 'flex' : 'none';
+  document.getElementById('perf-grade-score-group').style.display = type === 'grade' ? 'flex' : 'none';
+}
+
+function perfAddRecord() {
+  if (!perfSelectedStudent) { showToast('⚠️ 请先选择学生'); return; }
+  const type = document.getElementById('perf-record-type').value;
+  const content = document.getElementById('perf-record-content').value.trim();
+  if (!content) { showToast('⚠️ 请输入内容'); return; }
+  const today = new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' });
+  const record = { id: Date.now().toString(), date: today, type, content };
+  if (type === 'grade') { record.subject = document.getElementById('perf-grade-subject').value.trim(); record.score = document.getElementById('perf-grade-score').value.trim(); }
+  if (!perfRecords[perfSelectedStudent]) perfRecords[perfSelectedStudent] = [];
+  perfRecords[perfSelectedStudent].unshift(record);
+  perfSaveData();
+  syncPerfRecord(record, perfSelectedStudent, 'insert');
+  perfRenderRecords();
+  document.getElementById('perf-record-content').value = '';
+  document.getElementById('perf-grade-subject').value = '';
+  document.getElementById('perf-grade-score').value = '';
+  showToast('✅ 记录已添加！');
+}
+
+function perfDeleteRecord(id) {
+  if (!perfSelectedStudent || !perfRecords[perfSelectedStudent]) return;
+  const rec = perfRecords[perfSelectedStudent].find(r => r.id == id);
+  perfRecords[perfSelectedStudent] = perfRecords[perfSelectedStudent].filter(r => r.id != id);
+  perfSaveData();
+  if (rec) syncPerfRecord(rec, perfSelectedStudent, 'delete');
+  perfRenderRecords();
+  showToast('🗑️ 记录已删除');
+}
+
+function perfRenderRecords() {
+  const list = document.getElementById('perf-records-list');
+  if (!list || !perfSelectedStudent) return;
+  const recs = perfRecords[perfSelectedStudent] || [];
+  const TYPE_LABEL = { reward: '🏆 奖励', punish: '📕 惩罚', grade: '📊 成绩', other: '📝 其他' };
+  const TYPE_CLASS = { reward: 'type-reward', punish: 'type-punish', grade: 'type-grade', other: 'type-other' };
+  const ITEM_CLASS = { reward: '', punish: 'record-punish', grade: 'record-grade', other: 'record-other' };
+  if (recs.length === 0) { list.innerHTML = '<div class="perf-records-empty">暂无记录，添加第一条吧 😊</div>'; return; }
+  list.innerHTML = recs.map(r => {
+    let content = escHtml(r.content);
+    if (r.type === 'grade') { content = `${r.subject || '科目'}：${escHtml(r.score || '-')} 分 — ${escHtml(r.content)}`; }
+    return `<div class="perf-record-item ${ITEM_CLASS[r.type] || ''}">
+      <div class="perf-record-date">${r.date}</div>
+      <div class="perf-record-type ${TYPE_CLASS[r.type] || ''}">${TYPE_LABEL[r.type] || r.type}</div>
+      <div class="perf-record-content">${content}</div>
+      <button class="perf-record-del" onclick="perfDeleteRecord('${r.id}')" title="删除">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 通用工具
+// ══════════════════════════════════════════════════════════════
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 实时时钟
+// ══════════════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const weeks = ['周日','周一','周二','周三','周四','周五','周六'];
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${weeks[now.getDay()]}`;
+  document.getElementById('nav-clock').textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  document.getElementById('nav-date').textContent = dateStr;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ══════════════════════════════════════════════════════════════
+// 粒子背景动画
+// ══════════════════════════════════════════════════════════════
+(function initParticles() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles;
+  const COUNT = 70;
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  function createParticle() { return { x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.6+0.4, vx: (Math.random()-0.5)*0.35, vy: (Math.random()-0.5)*0.35, alpha: Math.random()*0.5+0.15 }; }
+  function init() { resize(); particles = Array.from({length: COUNT}, createParticle); }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(180,200,255,${p.alpha})`; ctx.fill();
+    });
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist < 110) {
+          ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(150,180,255,${0.12*(1-dist/110)})`; ctx.lineWidth = 0.6; ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  init(); draw();
+  window.addEventListener('resize', resize);
+})();
+
+// ══════════════════════════════════════════════════════════════
+// 初始化
+// ══════════════════════════════════════════════════════════════
+(async function init() {
+  // 加载待办事项
+  await loadTodos();
+  renderTodos();
+  // 加载学生表现记录
+  await perfLoadData();
+  perfRenderStudentList();
+  perfUpdatePreview();
+  perfShowNoStudent();
+  // 初始化座位网格
+  initSeatGrid();
+})();
+
+// 页面可见性变化时自动刷新待办事项和表现记录
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && supabaseClient) {
+    console.log('👁️ 页面重新可见，正在检查云端更新...');
+    loadTodos(); // 重新加载待办云端数据
+    refreshPerfData(); // 重新加载表现记录云端数据
+  }
+});
+</script>
+
+</body>
+</html>
